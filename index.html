@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoltronMail</title>
+<style>
+body{margin:0;font-family:Arial;background:#f1f5fb;color:#172b4d}
+header{background:#123777;color:white;padding:20px;font-size:25px;font-weight:bold}
+nav{background:#dce8fc;padding:12px;display:flex;gap:8px;flex-wrap:wrap}
+button{background:#235ac5;color:white;border:0;border-radius:8px;padding:12px;cursor:pointer}
+button:hover{background:#123777}
+main{max-width:900px;margin:25px auto;padding:15px}
+section{background:white;padding:20px;border-radius:12px;margin-bottom:15px}
+input,textarea{width:100%;box-sizing:border-box;padding:12px;margin:8px 0;border:1px solid #ccd5e3;border-radius:7px}
+textarea{min-height:130px}
+.message{padding:12px;border-bottom:1px solid #ddd;cursor:pointer}
+.message:hover{background:#eef4ff}
+.slide{background:#eef3ff;border:2px solid #c5d5f5;padding:30px;min-height:160px;text-align:center;border-radius:12px;margin:15px 0}
+</style>
+</head>
+<body>
+<header>⚡ VoltronMail</header>
+<nav>
+<button onclick="inbox()">Réception</button>
+<button onclick="compose()">Écrire</button>
+<button onclick="sent()">Envoyés</button>
+<button onclick="powerpoint()">PowerPoint</button>
+</nav>
+<main id="app"></main>
+<script>
+let messages=JSON.parse(localStorage.getItem("vm_messages")||"[]");
+let slides=JSON.parse(localStorage.getItem("vm_slides")||"[]");
+
+function save(){
+ localStorage.setItem("vm_messages",JSON.stringify(messages));
+ localStorage.setItem("vm_slides",JSON.stringify(slides));
+}
+function inbox(){
+ document.getElementById("app").innerHTML=
+ `<section><h2>Boîte de réception</h2>
+ <p>Bienvenue sur VoltronMail !</p>
+ <p>Les vrais e-mails ne sont pas encore activés.</p></section>`;
+}
+function compose(){
+ document.getElementById("app").innerHTML=`
+ <section><h2>Nouveau message</h2>
+ <input id="to" placeholder="Destinataire">
+ <input id="subject" placeholder="Objet">
+ <textarea id="body" placeholder="Votre message"></textarea>
+ <button onclick="send()">Envoyer (simulation)</button>
+ </section>`;
+}
+function send(){
+ let to=document.getElementById("to").value.trim();
+ let subject=document.getElementById("subject").value;
+ let body=document.getElementById("body").value;
+ if(!to){alert("Ajoutez un destinataire");return;}
+ messages.push({to,subject,body,date:new Date().toLocaleString()});
+ save();
+ alert("Message enregistré localement. Aucun e-mail réel envoyé.");
+ sent();
+}
+function sent(){
+ document.getElementById("app").innerHTML=
+ "<section><h2>Messages envoyés (simulation)</h2>"+
+ (messages.map((m,i)=>`<div class="message" onclick="readMessage(${i})">
+ <b>${safe(m.to)}</b> — ${safe(m.subject)}
+ </div>`).join("")||"<p>Aucun message</p>")+"</section>";
+}
+function readMessage(i){
+ let m=messages[i];
+ document.getElementById("app").innerHTML=
+ `<section><h2>${safe(m.subject)}</h2>
+ <p>À : ${safe(m.to)}</p>
+ <p style="white-space:pre-wrap">${safe(m.body)}</p>
+ <button onclick="sent()">Retour</button></section>`;
+}
+function safe(t){
+ return String(t||"").replace(/[&<>"']/g,c=>({
+ "&":"&amp;","<":"&lt;",">":"&gt;",
+ '"':"&quot;","'":"&#39;"
+ })[c]);
+}
+function powerpoint(){
+ document.getElementById("app").innerHTML=`
+ <section>
+ <h2>Présentations VoltronMail</h2>
+ <input id="title" placeholder="Titre de la diapositive">
+ <textarea id="content" placeholder="Contenu"></textarea>
+ <button onclick="addSlide()">Ajouter une diapositive</button>
+ <button onclick="downloadSlides()">Exporter en HTML</button>
+ <div id="slides"></div>
+ </section>`;
+ showSlides();
+}
+function addSlide(){
+ slides.push({
+ title:document.getElementById("title").value,
+ content:document.getElementById("content").value
+ });
+ save();
+ powerpoint();
+}
+function showSlides(){
+ let el=document.getElementById("slides");
+ if(!el)return;
+ el.innerHTML=slides.map((s,i)=>`
+ <div class="slide">
+ <h2>${safe(s.title)}</h2>
+ <p style="white-space:pre-wrap">${safe(s.content)}</p>
+ <button onclick="editSlide(${i})">Modifier</button>
+ <button onclick="deleteSlide(${i})">Supprimer</button>
+ </div>`).join("");
+}
+function editSlide(i){
+ let title=prompt("Titre",slides[i].title);
+ if(title===null)return;
+ let content=prompt("Contenu",slides[i].content);
+ if(content===null)return;
+ slides[i]={title,content};
+ save();
+ powerpoint();
+}
+function deleteSlide(i){
+ slides.splice(i,1);
+ save();
+ powerpoint();
+}
+function downloadSlides(){
+ let html=`<!DOCTYPE html><html lang="fr"><meta charset="UTF-8">
+ <title>Présentation VoltronMail</title>
+ <style>body{font-family:Arial}
+ section{padding:50px;min-height:400px;border-bottom:2px solid #ddd}
+ </style>`+
+ slides.map(s=>`<section><h1>${safe(s.title)}</h1>
+ <p style="white-space:pre-wrap">${safe(s.content)}</p></section>`).join("")+
+ "</html>";
+ let blob=new Blob([html],{type:"text/html"});
+ let a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="presentation-voltronmail.html";
+ a.click();
+ URL.revokeObjectURL(a.href);
+}
+inbox();
+</script>
+</body>
+</html>
